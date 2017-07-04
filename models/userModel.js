@@ -1,46 +1,61 @@
-// Load required packages
-const mongoose = require('mongoose');
+//  External modules
 const bcrypt = require('bcrypt-nodejs');
 
-// Define our user schema
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true},
-  password: { type: String, required: true },
-  accessType: { type: String, required: true },
-  name: {
-    first: { type: String, required: true },
-    last: { type: String, required: true },
-  }
-}, {
-  timestamps: true,
-});
+const encryptPassword = (user) => new Promise((resolve, reject) => {
+  bcrypt.genSalt(5, (err, salt) => {
+    if (err) reject(err);
 
-
-// Execute before each user.save() call
-UserSchema.pre('save', function hashPassword(callback) {
-  const user = this;
-
-  // Break out if the password hasn't changed
-  if (!user.isModified('password')) return callback();
-
-  // Password changed so we need to hash it
-  return bcrypt.genSalt(5, (err, salt) => {
-    if (err) return callback(err);
-
-    return bcrypt.hash(user.password, salt, null, (hashErr, hash) => {
-      if (hashErr) return callback(hashErr);
-      user.password = hash;
-      return callback();
+    bcrypt.hash(user.dataValues.password, salt, null, (hashErr, hash) => {
+      if (hashErr) reject();
+      user.dataValues.password = hash;
+      resolve(user);
     });
   });
 });
 
-UserSchema.methods.verifyPassword = function verifyPassword(password, cb) {
-  bcrypt.compare(password, this.password, (err, isMatch) => {
-    if (err) return cb(err);
-    return cb(null, isMatch);
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define('User', {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV1,
+      allowNull: false,
+      unique: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      primaryKey: true,
+      allowNull: false,
+      unique: true,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  }, {
+    classMethods: {
+      verifyPassword(candidatePassword, currentPassword, cb) {
+        bcrypt.compare(candidatePassword, currentPassword, (err, isMatch) => {
+          if (err) return cb(err);
+          return cb(null, isMatch);
+        });
+      },
+    },
   });
-};
 
-// Export the Mongoose model
-module.exports = mongoose.model('user', UserSchema);
+  User.hook('beforeValidate', (user) =>  {
+    if (!user._changed.password) {
+      return sequelize.Promise.resolve(user);
+    }
+    return encryptPassword(user).then((updatedUser) => sequelize.Promise.resolve(updatedUser));
+  });
+
+  return User;
+};

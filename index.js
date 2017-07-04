@@ -4,21 +4,12 @@ const bodyParser = require('body-parser');
 const express = require('express');
 const morgan = require('morgan');
 const expressValidator = require('express-validator');
-const mongoose = require('mongoose');
-mongoose.Promise = require('bluebird');
 
+const authController = require('./authentication/authentication');
+const userRouteHandler = require('./routeHandlers/userRouteHandler');
+const config = require('./config/config');
 
-const authController = require('./authentication/authentication.js');
-const userRouteHandler = require('./routeHandlers/userRouteHandler.js');
-
-
-const config = require('./config/config.js');
-
-const port = config.APP_PORT;
 const app = express();
-
-
-mongoose.connect(config.MONGO_URL); 
 
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -30,7 +21,6 @@ app.use(expressValidator({
     gte: (param, num) => (param >= num),
   },
 }));
-
 
 const router = express.Router();
 
@@ -60,7 +50,7 @@ router.use('/user/authenticate',
     authController.serialize,
     authController.generateToken,
     authController.respond
-  );
+);
 
 // Unauthenticated routes
 
@@ -79,7 +69,13 @@ router.use(authController.authenticate, (req, res, next) => {
 router.route('/user')
   .get(userRouteHandler.handleGetUserRoute);
 
+// Remove for production
+const models = require('./models');
 
-app.use('/', router);
-app.listen(config.APP_PORT);
-console.log(`API is running on port ${config.APP_PORT}`)
+models.sequelize.sync().then(() => {
+  app.use('/', router);
+  app.listen(config.APP_PORT);
+  console.log(`API is running on port ${config.APP_PORT}`)
+});
+
+

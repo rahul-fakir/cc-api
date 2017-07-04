@@ -1,50 +1,45 @@
-'use strict';
-
 const Promise = require('bluebird');
-const R = require('ramda');
-const User = require('../models/userModel');
-const config = require('../config/config.js');
+const _ = require('lodash');
+const User = require('../models').User;
 
-const registerUser = (email, password, name) => {
-  return new Promise((resolve, reject) => {
-    const newUser = new User({
-      email: email,
-      password: password,
-      accessType: 'STANDARD',
-      name: {
-        first: name.first,
-        last: name.last,
-      },
-    });
+const registerUser = (email, password, name) => new Promise((resolve, reject) => {
+  const newUser = {
+    email,
+    password,
+    firstName: name.firstName,
+    lastName: name.lastName,
+  };
 
-    const promise = newUser.save();
-    return promise.then((user) => {
-      resolve(user)
+  User.create(newUser)
+    .then((data) => {
+      resolve({
+        user: {
+          id: data.id,
+          email: data.email,
+        },
+      });
     })
-    .catch((err) => {
-      reject(err)
-    });
-  })
+    .catch(err => reject({ error: err.message }));
+});
 
-}
-
-
-const getUser = (email) => {
-  return new Promise((resolve, reject) => {
-    const promise = User.findOne({ email: email }).exec();
-    return promise.then((user) => {
-      resolve(user);
-    })
-    .catch((err) => {
-      reject(err)
-    });
-  })
-
-
-};
+const getUser = email => new Promise((resolve, reject) => {
+  User.findAll({
+    limit: 1,
+    where: {
+      email,
+    },
+  }).then((user) => {
+    if (_.isEqual(user.length, 0)) {
+      throw new Error('User not found');
+    }
+    resolve(_(user[0]).pick(['email', 'firstName']).pickBy().value());
+  }).catch((err) => {
+    reject(err);
+  });
+});
 
 
 module.exports = {
   getUser,
-  registerUser
-}
+  registerUser,
+};

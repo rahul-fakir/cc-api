@@ -2,10 +2,11 @@
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const Strategy = require('passport-local');
+const _ = require('lodash');
 const expressJwt = require('express-jwt');
 
-const User = require('../models/userModel');
-const config = require('../config/config.js');
+const User = require('../models').User;
+const config = require('../config/config');
 
 const authenticate = expressJwt({
   secret: config.APP_SECRET,
@@ -25,30 +26,35 @@ const authenticate = expressJwt({
 passport.use(new Strategy({
   usernameField: 'email',
   passwordField: 'password',
-}, (username, password, done) => {
-  const userPromise = User.findOne({
-    email: username,
-  }).exec();
-
-  return userPromise.then((user) => {
-    user.verifyPassword(password, (matchErr, isMatch) => {
+}, (email, password, done) => {
+  User.findAll({
+    limit: 1,
+    where: {
+      email,
+    },
+  }).then((data) => {
+    if (_.isEqual(data.length, 0)) {
+      throw new Error('Could not find user with provided email address');
+    }
+    data[0]._modelOptions.classMethods.verifyPassword(password, data[0].dataValues.password, (matchErr, isMatch) => {
       if (isMatch && !matchErr) {
         done(null, {
-          user,
+          data,
         });
       } else {
         done(null, false);
       }
     });
-  }).catch((userErr) => {
+  })
+  .catch((err) => {
     done(null, false);
   });
 }));
 
 const generateToken = (req, res, next) => {
   req.token = jwt.sign({
-    id: req.user.id,
-    email: req.user.email
+
+    email: req.body.email,
   }, config.APP_SECRET, {
     expiresIn: 60 * 60 * 24,
   });
@@ -57,7 +63,6 @@ const generateToken = (req, res, next) => {
 
 function respond(req, res) {
   res.status(200).json({
-    status: true,
     token: req.token,
   });
 }
