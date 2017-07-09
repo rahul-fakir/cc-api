@@ -5,5 +5,5 @@ module.exports = {
   APP_SECRET: envvar.string('APP_SECRET', 'cc-secret'),
   database: envvar.string('database', 'cc'),
   username: envvar.string('username', 'username'),
-  password: envvar.string('password', 'veBai4ao4quu'),
+  password: envvar.string('password', 'Ba8eed7rool8'),
 };

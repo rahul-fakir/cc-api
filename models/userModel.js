@@ -15,15 +15,15 @@ const encryptPassword = (user) => new Promise((resolve, reject) => {
 
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
-    id: {
+    userId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV1,
       allowNull: false,
       unique: true,
+      primaryKey: true,
     },
     email: {
       type: DataTypes.STRING,
-      primaryKey: true,
       allowNull: false,
       unique: true,
     },
@@ -31,11 +31,28 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    access: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'STANDARD',
+    },
     firstName: {
       type: DataTypes.STRING,
       allowNull: false,
     },
     lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    countryCode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    idCode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    accountAccessType: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -56,6 +73,15 @@ module.exports = (sequelize, DataTypes) => {
     }
     return encryptPassword(user).then((updatedUser) => sequelize.Promise.resolve(updatedUser));
   });
+
+  User.associate = (models) => {
+    User.hasMany(models.Account, {
+      foreignKey: 'userId',
+    });
+    User.hasMany(models.Id, {
+      foreignKey: 'userId',
+    });
+  };
 
   return User;
 };

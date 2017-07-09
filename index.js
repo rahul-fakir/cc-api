@@ -71,11 +71,11 @@ router.route('/user')
 
 // Remove for production
 const models = require('./models');
+const seeder = require('./seeders');
 
 models.sequelize.sync().then(() => {
+  seeder.seedDatabase(models.sequelize.models);
   app.use('/', router);
   app.listen(config.APP_PORT);
-  console.log(`API is running on port ${config.APP_PORT}`)
+  console.log(`API is running on port ${config.APP_PORT}`);
 });
-
-

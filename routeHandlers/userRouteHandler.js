@@ -23,6 +23,7 @@
       });
     })
     .catch((err) => {
+      console.log(err)
       res.status(409).send({
         status: false,
         code: 100,
